@@ -1,0 +1,219 @@
+import { useState } from "react";
+import { Link, useLocation, useNavigate } from "react-router-dom";
+import axios from "../api/axios";
+
+function OrderConfirmation() {
+  const location = useLocation();
+  const navigate = useNavigate();
+  const order =
+    location.state?.order || JSON.parse(localStorage.getItem("lastOrder") || "null");
+  const statusClass =
+    order?.status === "Completed"
+      ? "status-completed"
+      : order?.status === "Pending"
+        ? "status-not-completed"
+        : "status-preparing";
+  const [paymentMessage, setPaymentMessage] = useState("");
+  const [paying, setPaying] = useState(false);
+  const [paymentDone, setPaymentDone] = useState(false);
+  const [showPaymentConfirm, setShowPaymentConfirm] = useState(false);
+  const [transactionId, setTransactionId] = useState("");
+  const [proofFile, setProofFile] = useState(null);
+  const [proofPreview, setProofPreview] = useState("");
+  const [paymentMethod, setPaymentMethod] = useState("UPI");
+
+  const toAddonList = (raw) => {
+    if (Array.isArray(raw)) return raw;
+    if (typeof raw === "string") return raw.split("|").filter(Boolean);
+    return [];
+  };
+
+  const upiId = import.meta.env.VITE_UPI_ID || "rk8300089@okaxis";
+  const payeeName = import.meta.env.VITE_UPI_NAME || "Ranjith Kumar";
+  const amount = Number(order?.total_price || 0).toFixed(2);
+  const baseParams = `pa=${encodeURIComponent(upiId)}&pn=${encodeURIComponent(payeeName)}&am=${encodeURIComponent(amount)}&cu=INR&tn=${encodeURIComponent(`Order ${order?.id || ""}`)}`;
+  const upiLink = `upi://pay?${baseParams}`;
+  const gpayLink = `tez://upi/pay?${baseParams}`;
+  const paytmLink = `paytmmp://pay?${baseParams}`;
+
+  const openPaymentApp = (url) => {
+    window.location.href = url;
+  };
+
+  const markPaymentCompleted = async () => {
+    if (!order?.id) return;
+    if (paymentMethod === "UPI" && !proofFile) {
+      setPaymentMessage("Please upload your payment screenshot to verify.");
+      return;
+    }
+
+    setPaying(true);
+    setPaymentMessage("");
+    try {
+      const formData = new FormData();
+      formData.append("payment_method", paymentMethod);
+      if (proofFile) {
+        formData.append("proof_image", proofFile);
+      }
+
+      const res = await axios.post(`/payments/pay/${order.id}`, formData, {
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+      });
+
+      setTransactionId(res.data.transaction_id || "");
+      setPaymentMessage("Payment successful and confirmed.");
+      setPaymentDone(true);
+      setShowPaymentConfirm(false);
+    } catch (err) {
+      setPaymentMessage(err?.response?.data?.detail || "Payment failed");
+    } finally {
+      setPaying(false);
+    }
+  };
+
+  if (!order) {
+    return (
+      <section className="page-card swiggy-confirm-page">
+        <h2>No recent order found.</h2>
+        <Link className="confirm-link" to="/menu">Back to menu</Link>
+      </section>
+    );
+  }
+
+  return (
+    <section className="page-card swiggy-confirm-page">
+      <div className="confirm-hero">
+        <h1>Order Confirmed</h1>
+        <p className="confirm-order-id">Order ID: #{order.id}</p>
+        <p>
+          Status: <span className={statusClass}>{order.status}</span>
+        </p>
+        {order.table_id && <p>Table: #{order.table_id}</p>}
+      </div>
+
+      <div className="confirm-body">
+        <h3>Items</h3>
+        <ul className="confirm-items-list">
+          {order.items?.map((item) => (
+            <li key={item.id} className="confirm-item-row">
+              <span>
+                {item.name} x {item.quantity}
+                {toAddonList(item.addon_names).length > 0 && (
+                  <small className="addon-line">+ {toAddonList(item.addon_names).join(", ")}</small>
+                )}
+              </span>
+              <strong>₹{(item.price * item.quantity).toFixed(2)}</strong>
+            </li>
+          ))}
+        </ul>
+
+        <p className="confirm-total">Total: ₹{order.total_price}</p>
+        <p>Step 2: Complete payment using any UPI app below.</p>
+
+        <div className="payment-app-row">
+          <button
+            className={`pay-option-btn ${paymentMethod === "UPI" ? "active-method" : ""}`}
+            onClick={() => {
+              setPaymentMethod("UPI");
+              openPaymentApp(gpayLink);
+            }}
+            disabled={paymentDone}
+          >
+            Pay with GPay
+          </button>
+          <button
+            className={`pay-option-btn ${paymentMethod === "UPI" ? "active-method" : ""}`}
+            onClick={() => {
+              setPaymentMethod("UPI");
+              openPaymentApp(paytmLink);
+            }}
+            disabled={paymentDone}
+          >
+            Pay with Paytm
+          </button>
+          <button
+            className={`pay-option-btn ${paymentMethod === "UPI" ? "active-method" : ""}`}
+            onClick={() => {
+              setPaymentMethod("UPI");
+              openPaymentApp(upiLink);
+            }}
+            disabled={paymentDone}
+          >
+            Other UPI Apps
+          </button>
+          <button
+            className={`pay-option-btn ${paymentMethod === "Cash" ? "active-method" : ""}`}
+            onClick={() => setPaymentMethod("Cash")}
+            disabled={paymentDone}
+          >
+            Pay at Counter
+          </button>
+        </div>
+
+        <button
+          className="confirm-pay-btn"
+          onClick={() => setShowPaymentConfirm(true)}
+          disabled={paying || paymentDone}
+        >
+          {paying ? "Recording Payment..." : "Payment Success - Confirm"}
+        </button>
+      </div>
+
+      {paymentMessage && <p className="confirm-payment-message">{paymentMessage}</p>}
+      {paymentDone && (
+        <div className="payment-success-card" role="status" aria-live="polite">
+          <div className="payment-success-tick">✓</div>
+          <p className="payment-success-title">Payment Successful</p>
+          {transactionId && <p className="payment-success-id">Transaction ID: {transactionId}</p>}
+        </div>
+      )}
+      {paymentDone && (
+        <button className="confirm-next-btn" onClick={() => navigate("/payment-history")}>Go to Payment History</button>
+      )}
+      <Link className="confirm-link" to="/menu">Order More</Link>
+
+      {showPaymentConfirm && (
+        <div className="payment-confirm-overlay" onClick={() => setShowPaymentConfirm(false)}>
+          <div className="payment-confirm-modal" onClick={(e) => e.stopPropagation()}>
+            <h3>Confirm Payment</h3>
+            <p>Did you complete the payment in your UPI app?</p>
+            <div className="payment-confirm-actions">
+              <button type="button" className="confirm-link" onClick={() => setShowPaymentConfirm(false)}>
+                Not Yet
+              </button>
+              <button type="button" className="confirm-pay-btn" onClick={markPaymentCompleted} disabled={paying}>
+                {paying ? "Confirming..." : "Yes, I Paid"}
+              </button>
+            </div>
+
+            <div className="payment-proof-block">
+              <label htmlFor="payment-proof" className="payment-proof-label">
+                Upload payment screenshot {paymentMethod === "UPI" ? "(required for UPI)" : "(optional)"}
+              </label>
+              <input
+                id="payment-proof"
+                type="file"
+                accept="image/png,image/jpeg,image/webp"
+                onChange={(e) => {
+                  const file = e.target.files?.[0] || null;
+                  setProofFile(file);
+                  if (proofPreview) {
+                    URL.revokeObjectURL(proofPreview);
+                  }
+                  setProofPreview(file ? URL.createObjectURL(file) : "");
+                }}
+              />
+              {proofPreview && (
+                <img src={proofPreview} alt="Payment proof preview" className="payment-proof-preview" />
+              )}
+            </div>
+          </div>
+        </div>
+      )}
+    </section>
+  );
+}
+
+export default OrderConfirmation;
