@@ -31,6 +31,9 @@ function PaymentHistory() {
     if (verifyFilter === "All") return true;
     return (payment.verification_status || "Pending") === verifyFilter;
   });
+  const pendingCount = payments.filter(
+    (payment) => (payment.verification_status || "Pending") === "Pending"
+  ).length;
 
   return (
     <section className="page-card payment-history-page swiggy-payment-page">
@@ -50,35 +53,54 @@ function PaymentHistory() {
           ))}
         </div>
       </div>
+      {pendingCount > 0 && (
+        <div className="payment-pending-notice" role="status" aria-live="polite">
+          {pendingCount} payment{pendingCount > 1 ? "s are" : " is"} waiting for admin verification.
+        </div>
+      )}
       {error && <p className="error-text">{error}</p>}
       {!visiblePayments.length && !error && <p>No payment records for this filter.</p>}
 
-      {visiblePayments.map((payment) => (
-        <div key={payment.id} className="history-item payment-history-item">
-          <div className="payment-history-left">
-            <p><strong>Order #{payment.order_id}</strong></p>
-            <p>Transaction: {payment.transaction_id}</p>
-            <p className="payment-verify-text">
-              Verification: {payment.verification_status || "Pending"}
-            </p>
-            {payment.screenshot_url && (
-              <a href={payment.screenshot_url} target="_blank" rel="noreferrer" className="payment-proof-link">
-                <img
-                  src={payment.screenshot_url}
-                  alt={`Payment proof for order ${payment.order_id}`}
-                  className="payment-proof-thumb"
-                />
-              </a>
-            )}
+      {visiblePayments.map((payment) => {
+        const verificationStatus = payment.verification_status || "Pending";
+        const rightChipClass =
+          verificationStatus === "Rejected"
+            ? "status-not-completed payment-chip"
+            : verificationStatus === "Pending"
+              ? "status-preparing payment-chip"
+              : "status-completed payment-chip";
+        const rightChipText =
+          verificationStatus === "Rejected"
+            ? "Rejected"
+            : verificationStatus === "Pending"
+              ? "Pending Review"
+              : payment.status;
+
+        return (
+          <div key={payment.id} className="history-item payment-history-item">
+            <div className="payment-history-left">
+              <p><strong>Order #{payment.order_id}</strong></p>
+              <p>Transaction: {payment.transaction_id}</p>
+              <p className="payment-verify-text">
+                Verification: {payment.verification_status || "Pending"}
+              </p>
+              {payment.screenshot_url && (
+                <a href={payment.screenshot_url} target="_blank" rel="noreferrer" className="payment-proof-link">
+                  <img
+                    src={payment.screenshot_url}
+                    alt={`Payment proof for order ${payment.order_id}`}
+                    className="payment-proof-thumb"
+                  />
+                </a>
+              )}
+            </div>
+            <div className="payment-history-right">
+              <p className="payment-amount">₹{payment.amount}</p>
+              <p className={rightChipClass}>{rightChipText}</p>
+            </div>
           </div>
-          <div className="payment-history-right">
-            <p className="payment-amount">₹{payment.amount}</p>
-            <p className={payment.status === "Success" ? "status-completed payment-chip" : "status-not-completed payment-chip"}>
-              {payment.status}
-            </p>
-          </div>
-        </div>
-      ))}
+        );
+      })}
     </section>
   );
 }

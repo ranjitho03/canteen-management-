@@ -7,6 +7,9 @@ const VERIFY_STATUSES = ["Pending", "Verified", "Rejected"];
 function AdminPaymentsPage() {
   const [payments, setPayments] = useState([]);
   const [error, setError] = useState("");
+  const pendingCount = payments.filter(
+    (payment) => (payment.verification_status || "Pending") === "Pending"
+  ).length;
 
   const loadPayments = async () => {
     setError("");
@@ -22,8 +25,14 @@ function AdminPaymentsPage() {
     const timer = setTimeout(() => {
       loadPayments();
     }, 0);
+    const intervalId = setInterval(() => {
+      loadPayments();
+    }, 10000);
 
-    return () => clearTimeout(timer);
+    return () => {
+      clearTimeout(timer);
+      clearInterval(intervalId);
+    };
   }, []);
 
   const updateVerification = async (paymentId, verificationStatus) => {
@@ -42,11 +51,19 @@ function AdminPaymentsPage() {
     <section className="admin-layout">
       <div className="page-card admin-payments-page">
         <h1>Payment Verification</h1>
+        {pendingCount > 0 && (
+          <div className="admin-pending-notice" role="status" aria-live="polite">
+            Notification: {pendingCount} payment{pendingCount > 1 ? "s are" : " is"} pending admin verification.
+          </div>
+        )}
         {error && <p className="error-text">{error}</p>}
         {!payments.length && !error && <p>No payments yet.</p>}
 
         {payments.map((payment) => (
-          <article key={payment.id} className="payment-verify-card">
+          <article
+            key={payment.id}
+            className={`payment-verify-card ${(payment.verification_status || "Pending") === "Pending" ? "payment-verify-card-pending" : ""}`}
+          >
             <div className="payment-verify-info">
               <p><strong>Order #{payment.order_id}</strong></p>
               <p>Transaction: {payment.transaction_id || "-"}</p>

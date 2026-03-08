@@ -53,6 +53,18 @@ function OrdersPage() {
               </span>
             </p>
             <p>
+              <strong>Verification:</strong>{" "}
+              <span
+                className={
+                  (order.payment_verification_status || "Pending") === "Verified"
+                    ? "status-completed"
+                    : "status-not-completed"
+                }
+              >
+                {order.payment_verification_status || "Pending"}
+              </span>
+            </p>
+            <p>
               <strong>Items:</strong>{" "}
               {order.items.map((item) => `${item.name} x${item.quantity}`).join(", ")}
             </p>
@@ -61,7 +73,11 @@ function OrdersPage() {
               {ORDER_STATUSES.map((status) => (
                 <button
                   key={status}
-                  disabled={order.status === status}
+                  disabled={
+                    order.status === status ||
+                    ((status === "Preparing" || status === "Completed") &&
+                      (order.payment_verification_status || "Pending") !== "Verified")
+                  }
                   onClick={() => updateStatus(order.id, status)}
                 >
                   {status}

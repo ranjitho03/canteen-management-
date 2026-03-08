@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import axios from "../api/axios";
 
@@ -21,6 +21,7 @@ function OrderConfirmation() {
   const [proofFile, setProofFile] = useState(null);
   const [proofPreview, setProofPreview] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("UPI");
+  const [paymentVerificationStatus, setPaymentVerificationStatus] = useState("Pending");
 
   const toAddonList = (raw) => {
     if (Array.isArray(raw)) return raw;
@@ -39,6 +40,49 @@ function OrderConfirmation() {
   const openPaymentApp = (url) => {
     window.location.href = url;
   };
+
+  const refreshCurrentPayment = async () => {
+    if (!order?.id) return;
+
+    try {
+      const res = await axios.get("/payments/history");
+      const currentPayment = (res.data || []).find((payment) => payment.order_id === order.id);
+      if (!currentPayment) return;
+
+      const nextStatus = currentPayment.verification_status || "Pending";
+      setPaymentDone(true);
+      setTransactionId(currentPayment.transaction_id || "");
+      setPaymentVerificationStatus(nextStatus);
+
+      if (nextStatus === "Rejected") {
+        setPaymentMessage("Admin rejected your payment proof. Please upload a new screenshot and submit again.");
+      } else if (nextStatus === "Verified") {
+        setPaymentMessage("Payment verified by admin.");
+      } else {
+        setPaymentMessage("Payment submitted. Waiting for admin verification.");
+      }
+    } catch {
+      // Ignore transient fetch errors during polling.
+    }
+  };
+
+  useEffect(() => {
+    const timer = setTimeout(() => {
+      refreshCurrentPayment();
+    }, 0);
+
+    return () => clearTimeout(timer);
+  }, [order?.id]);
+
+  useEffect(() => {
+    if (!paymentDone || !order?.id) return undefined;
+
+    const intervalId = setInterval(() => {
+      refreshCurrentPayment();
+    }, 5000);
+
+    return () => clearInterval(intervalId);
+  }, [paymentDone, order?.id]);
 
   const markPaymentCompleted = async () => {
     if (!order?.id) return;
@@ -63,7 +107,8 @@ function OrderConfirmation() {
       });
 
       setTransactionId(res.data.transaction_id || "");
-      setPaymentMessage("Payment successful and confirmed.");
+      setPaymentVerificationStatus(res.data.verification_status || "Pending");
+      setPaymentMessage("Payment submitted. Waiting for admin verification.");
       setPaymentDone(true);
       setShowPaymentConfirm(false);
     } catch (err) {
@@ -155,18 +200,90 @@ function OrderConfirmation() {
         <button
           className="confirm-pay-btn"
           onClick={() => setShowPaymentConfirm(true)}
-          disabled={paying || paymentDone}
+          disabled={
+            paying ||
+            (paymentDone && paymentVerificationStatus !== "Rejected")
+          }
         >
-          {paying ? "Recording Payment..." : "Payment Success - Confirm"}
+          {paying
+            ? "Recording Payment..."
+            : paymentVerificationStatus === "Rejected"
+              ? "Re-submit Payment Proof"
+              : "Payment Success - Confirm"}
         </button>
       </div>
 
       {paymentMessage && <p className="confirm-payment-message">{paymentMessage}</p>}
       {paymentDone && (
-        <div className="payment-success-card" role="status" aria-live="polite">
-          <div className="payment-success-tick">✓</div>
-          <p className="payment-success-title">Payment Successful</p>
-          {transactionId && <p className="payment-success-id">Transaction ID: {transactionId}</p>}
+        <div
+          className={
+            paymentVerificationStatus === "Rejected"
+              ? "payment-rejected-card"
+              : paymentVerificationStatus === "Verified"
+                ? "payment-success-card"
+                : "payment-pending-card"
+          }
+          role="status"
+          aria-live="polite"
+        >
+          <div
+            className={
+              paymentVerificationStatus === "Rejected"
+                ? "payment-rejected-badge"
+                : paymentVerificationStatus === "Verified"
+                  ? "payment-success-tick"
+                  : "payment-pending-badge"
+            }
+          >
+            {paymentVerificationStatus === "Rejected"
+              ? "!"
+              : paymentVerificationStatus === "Verified"
+                ? "✓"
+                : "P"}
+          </div>
+          <p
+            className={
+              paymentVerificationStatus === "Rejected"
+                ? "payment-rejected-title"
+                : paymentVerificationStatus === "Verified"
+                  ? "payment-success-title"
+                  : "payment-pending-title"
+            }
+          >
+            {paymentVerificationStatus === "Rejected"
+              ? "Payment Rejected"
+              : paymentVerificationStatus === "Verified"
+                ? "Payment Verified"
+                : "Payment Pending Verification"}
+          </p>
+          <p
+            className={
+              paymentVerificationStatus === "Rejected"
+                ? "payment-rejected-id"
+                : paymentVerificationStatus === "Verified"
+                  ? "payment-success-id"
+                  : "payment-pending-id"
+            }
+          >
+            {paymentVerificationStatus === "Rejected"
+              ? "Admin rejected proof. Upload a new screenshot and submit again."
+              : paymentVerificationStatus === "Verified"
+                ? "Admin has verified your payment."
+                : "Order stays Pending until admin verifies it."}
+          </p>
+          {transactionId && (
+            <p
+              className={
+                paymentVerificationStatus === "Rejected"
+                  ? "payment-rejected-id"
+                  : paymentVerificationStatus === "Verified"
+                    ? "payment-success-id"
+                    : "payment-pending-id"
+              }
+            >
+              Transaction ID: {transactionId}
+            </p>
+          )}
         </div>
       )}
       {paymentDone && (

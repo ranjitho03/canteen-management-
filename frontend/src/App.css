@@ -1559,6 +1559,76 @@ button:hover {
     font-weight: 700;
 }
 
+.payment-pending-card {
+    margin: 10px 16px 0;
+    border: 1px solid #ffd7b6;
+    background: #fff7ed;
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+}
+
+.payment-pending-badge {
+    width: 34px;
+    height: 34px;
+    margin: 0 auto 6px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: #f97316;
+    color: #ffffff;
+    font-weight: 800;
+    animation: popTick 300ms ease;
+}
+
+.payment-pending-title {
+    margin: 0;
+    color: #9a3412;
+    font-weight: 800;
+}
+
+.payment-pending-id {
+    margin: 4px 0 0;
+    color: #9a3412;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
+.payment-rejected-card {
+    margin: 10px 16px 0;
+    border: 1px solid #fda29b;
+    background: #fef3f2;
+    border-radius: 12px;
+    padding: 12px;
+    text-align: center;
+}
+
+.payment-rejected-badge {
+    width: 34px;
+    height: 34px;
+    margin: 0 auto 6px;
+    border-radius: 999px;
+    display: grid;
+    place-items: center;
+    background: #d92d20;
+    color: #ffffff;
+    font-weight: 800;
+    animation: popTick 300ms ease;
+}
+
+.payment-rejected-title {
+    margin: 0;
+    color: #b42318;
+    font-weight: 800;
+}
+
+.payment-rejected-id {
+    margin: 4px 0 0;
+    color: #912018;
+    font-size: 0.9rem;
+    font-weight: 700;
+}
+
 @keyframes popTick {
     from {
         transform: scale(0.8);
@@ -1614,6 +1684,16 @@ button:hover {
     border-color: #ff6b00;
 }
 
+.payment-pending-notice {
+    margin: 0 0 10px;
+    border: 1px solid #ffd7b6;
+    background: #fff7ed;
+    color: #9a3412;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 800;
+}
+
 .payment-history-item {
     border: 1px solid #edf1f5;
     border-radius: 12px;
@@ -1667,6 +1747,16 @@ button:hover {
     width: min(920px, 96vw);
 }
 
+.admin-pending-notice {
+    margin: 8px 0 10px;
+    border: 1px solid #fed7aa;
+    background: #fff7ed;
+    color: #9a3412;
+    border-radius: 10px;
+    padding: 10px 12px;
+    font-weight: 800;
+}
+
 .payment-verify-card {
     border: 1px solid #e5e7eb;
     border-radius: 12px;
@@ -1674,6 +1764,11 @@ button:hover {
     margin-top: 10px;
     display: grid;
     gap: 10px;
+}
+
+.payment-verify-card-pending {
+    border-color: #fdba74;
+    background: #fffdf9;
 }
 
 .payment-verify-info p {

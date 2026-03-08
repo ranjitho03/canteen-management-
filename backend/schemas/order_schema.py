@@ -74,3 +74,4 @@ class AdminOrderOut(BaseModel):
 	total_price: float
 	status: str
 	payment_status: str
+	payment_verification_status: str

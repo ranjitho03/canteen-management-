@@ -48,7 +48,7 @@ function Header({ user, onLogout }) {
       </div>
       <nav className="app-nav" aria-label="Primary navigation">
         <Link className="nav-link" to="/menu">Menu</Link>
-        {user && <Link className="nav-link" to="/cart">Cart</Link>}
+        {user?.role !== "admin" && <Link className="nav-link" to="/cart">Cart</Link>}
         {user && <Link className="nav-link" to="/orders-history">Orders</Link>}
         {user && <Link className="nav-link" to="/payment-history">Payment History</Link>}
         {user?.role === "admin" && <Link className="nav-link" to="/admin">Admin</Link>}
@@ -125,7 +125,7 @@ function App() {
             path="/cart"
             element={
               <ProtectedRoute>
-                <CartPage />
+                {user?.role === "admin" ? <Navigate to="/admin" replace /> : <CartPage />}
               </ProtectedRoute>
             }
           />

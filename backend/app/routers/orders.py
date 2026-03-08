@@ -230,6 +230,9 @@ def get_all_orders(
                 total_price=ord_row.total_price,
                 status=ord_row.status,
                 payment_status=payment.status if payment else "Unpaid",
+                payment_verification_status=(
+                    payment.verification_status if payment else "Pending"
+                ),
             )
         )
 
@@ -246,6 +249,14 @@ def update_order_status(
     order = db.query(Order).filter(Order.id == order_id).first()
     if not order:
         raise HTTPException(status_code=404, detail="Order not found")
+
+    if payload.status in {"Preparing", "Completed"}:
+        payment = db.query(Payment).filter(Payment.order_id == order.id).first()
+        if not payment or payment.verification_status != "Verified":
+            raise HTTPException(
+                status_code=400,
+                detail="Order can move beyond Pending only after payment is Verified",
+            )
 
     order.status = payload.status
     db.commit()
